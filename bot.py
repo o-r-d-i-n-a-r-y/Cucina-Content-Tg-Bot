@@ -54,6 +54,9 @@ class EventDishStates(Helper):
 	SI = ListItem() # deletement refinement 17
 	SJ = ListItem() # delete confirmation 18
 
+	# i forgot to add field (end-date) to event, i`m sorry
+	SK = ListItem() # date state for event! 19
+
 # logging setup
 logging.basicConfig(level = logging.INFO)
 
@@ -67,8 +70,12 @@ dp = Dispatcher(bot, storage = MemoryStorage())
 @dp.message_handler(commands = ["start"], commands_prefix = "/")
 async def on_start(message: types.Message):
 	if(message.from_user.id == config.ADMIN_ID):
+		state = dp.current_state(user = message.from_user.id)
+
 		await message.answer("Здравствуйте!🤗\nВы запустили контент-бота сети пиццерий Cucina🍕🍕🍕" +
 			"\nДля продолжения введите одну из следующих команд:" + "\n/add_event - Добавить новость\n/add_dish - Добавить новое блюдо")
+
+		await state.set_state(EventDishStates.all()[8])
 
 # help cmd
 @dp.message_handler(state = '*', commands = ["help"], commands_prefix = "/")
@@ -191,6 +198,21 @@ async def add_event(message: types.Message):
 	else:
 		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
 
+# add dish cmd
+@dp.message_handler(state = '*', commands = ["add_dish"], commands_prefix = "/")
+async def add_dish(message: types.Message):
+	if(message.from_user.id == config.ADMIN_ID):
+		if(bool(event_data)):
+			await message.answer("Добавление новости отменено⚠")
+			event_data.clear()
+
+		state = dp.current_state(user = message.from_user.id)
+
+		await message.answer("Добавление блюда начато!✅\nСперва введите название (не более 25 символов):")
+		await state.set_state(EventDishStates.all()[9])
+	else:
+		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
+
 # event type request
 @dp.message_handler(state = EventDishStates.S0)
 async def request_name(message: types.Message):
@@ -230,11 +252,22 @@ async def request_content(message: types.Message):
 	if(len(message.text) <= 500):
 		event_data["content"] = message.text
 
-		await message.answer("Хорошо!\nДалее вам нужно отправить ссылку на картинку для события.\nДля этого используйте сайт https://postimg.cc"
-		 + "\nОбязательно выберите ссылку с подписью \'Direct link!\'⚠️")
-		await state.set_state(EventDishStates.all()[3])
+		await message.answer("Хорошо!\nДалее укажите конечную дату показа в формате:\nДД.ММ.ГГГГ")
+		await state.set_state(EventDishStates.all()[19])
 	else:
 		await message.answer("❌Длина содержимого не должна превышать 500 символов!❌")
+
+# event end-date request
+@dp.message_handler(state = EventDishStates.SK)
+async def request_date(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	if(len(message.text) == 10):
+		event_data["end-date"] = message.text
+
+		await message.answer("Хорошо!\nДалее вам нужно отправить ссылку на картинку для события.\nДля этого используйте сайт https://postimg.cc"
+			 + "\nОбязательно выберите ссылку с подписью \'Direct link!\'⚠️")
+		await state.set_state(EventDishStates.all()[3])
 
 # event img-url request
 @dp.message_handler(state = EventDishStates.S3)
@@ -277,7 +310,8 @@ async def request_city(message: types.Message):
 			cities = "Все города\n"
 
 		await message.answer("Готово!🥳\nПроверьте данные и нажиите 'Да✅', чтобы подтвердить отправку или 'Нет❌', чтобы редактировать пост.\n\n"
-			+ "Тип: " + types[event_data["type"]] + "\n\n" + event_data["header"] + "\n" + event_data["content"] + "\n\nГорода:\n" + cities + "\nСсылка на изображение: " + event_data["img-url"],
+			+ "Тип: " + types[event_data["type"]] + "\n\n" + event_data["header"] + "\n" + event_data["content"] + "\n\nГорода:\n" + cities + "\nСсылка на изображение: "
+			+ event_data["img-url"] + "\n\n" + event_data["end-date"],
 			 reply_markup = kb.inline_kb_full)
 
 		await state.set_state(EventDishStates.all()[5])
@@ -291,15 +325,15 @@ async def event_confirmation_request(message: types.Message):
 
 	if(message.text == 'Да✅'):
 		# creating insert query
-		insert_query = "INSERT INTO events(TYPE, HEADER, CONTENT, IMG_URL, CITY) VALUES(%s, %s, %s, %s, %s);"	
-		cursor.execute(insert_query, (event_data["type"], event_data["header"], event_data["content"], event_data["img-url"], event_data["city"]))
+		insert_query = "INSERT INTO events(TYPE, HEADER, CONTENT, IMG_URL, CITY, END_DATE) VALUES(%s, %s, %s, %s, %s, %s);"	
+		cursor.execute(insert_query, (event_data["type"], event_data["header"], event_data["content"], event_data["img-url"], event_data["city"], event_data["end-date"]))
 
 		connection.commit()
 
 		event_data.clear()
 
 		await message.answer("Событие добавлено в базу данных!😎\nДля продолжения работы введите команду.")
-		await state.set_state(EventDishStates.all()[7])
+		await state.set_state(EventDishStates.all()[8])
 	elif(message.text == 'Нет❌'):
 		await message.answer("Отправка отменена⚠️\nНовость отправлена на доработку!")
 		await message.answer("Сперва введите параметр (цифрой), который желаете изменить.\nЧерез пробел введите новое значение параметра.\n\n"
@@ -381,21 +415,6 @@ async def event_correction(message: types.Message):
 				+ "Тип: " + types[event_data["type"]] + "\n\n" + event_data["header"] + "\n" + event_data["content"] +
 				 "\n\nГорода:\n" + cities + "\nСсылка на изображение: " + event_data["img-url"],
 				 reply_markup = kb.inline_kb_full)
-
-# add dish cmd
-@dp.message_handler(state = '*', commands = ["add_dish"], commands_prefix = "/")
-async def add_dish(message: types.Message):
-	if(message.from_user.id == config.ADMIN_ID):
-		if(bool(event_data)):
-			await message.answer("Добавление новости отменено⚠")
-			event_data.clear()
-
-		state = dp.current_state(user = message.from_user.id)
-
-		await message.answer("Добавление блюда начато!✅\nСперва введите название (не более 25 символов):")
-		await state.set_state(EventDishStates.all()[9])
-	else:
-		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
 
 # dish name
 @dp.message_handler(state = EventDishStates.SA)
