@@ -3,6 +3,8 @@ import logging
 import threading
 import keyboard as kb
 import pymysql
+import hashlib
+import json
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils.helper import Helper, HelperMode, ListItem
@@ -15,13 +17,18 @@ from aiogram.types import ReplyKeyboardRemove, \
     ReplyKeyboardMarkup, KeyboardButton, \
     InlineKeyboardMarkup, InlineKeyboardButton
 
+from alphabet_detector import AlphabetDetector
+
 # for events
 event_data = dict()
 
 # for dishes
 dish_data = dict()
 
-# delete data (for dishes and events)
+# for cafes
+cafe_data = dict()
+
+# delete data (for all)
 delete_data = dict()
 
 class EventDishStates(Helper):
@@ -37,8 +44,8 @@ class EventDishStates(Helper):
 	S6 = ListItem()	# correction state
 	S7 = ListItem() # delete state
 
-	# for both them
-	S8 = ListItem() # final state (for both event and dish!)
+	# for all
+	S8 = ListItem() # final state (for event, cafe and dish)
 
 	# dish states
 	SA = ListItem() # name state 9
@@ -50,12 +57,24 @@ class EventDishStates(Helper):
 	SG = ListItem()	# correction state 15
 	SH = ListItem() # delete state 16
 
-	# for both them
+	# for all
 	SI = ListItem() # deletement refinement 17
 	SJ = ListItem() # delete confirmation 18
 
-	# i forgot to add field (end-date) to event, i`m sorry
+	# i forgot to add some states
 	SK = ListItem() # date state for event! 19
+	SL = ListItem() # dish price 20
+
+	# cafe states
+	SM = ListItem() # address state 21
+	SN = ListItem() # lat/lng state 22
+	SO = ListItem() # password state 23
+	SP = ListItem() # urls req. state 24
+	SQ = ListItem() # city state 25
+	SR = ListItem() # check state 26
+	SS = ListItem() # correction state 27
+	ST = ListItem() # delete state 28
+
 
 # logging setup
 logging.basicConfig(level = logging.INFO)
@@ -77,10 +96,71 @@ async def on_start(message: types.Message):
 
 		await state.set_state(EventDishStates.all()[8])
 
+
+# add event cmd
+@dp.message_handler(state = '*', commands = ["add_event"], commands_prefix = "/")
+async def add_event(message: types.Message):
+	if(message.from_user.id == config.ADMIN_ID):
+		if(bool(dish_data)):
+			await message.answer("Добавление блюда отменено⚠")
+			dish_data.clear()
+
+		if(bool(cafe_data)):
+			await message.answer("Добавление кафе отменено⚠")
+			cafe_data.clear()
+
+		state = dp.current_state(user = message.from_user.id)
+
+		await message.answer("Добавление новости начато!✅\nСперва введите тип новости:\n0 - Открытие в новом месте" +
+			"\n1 - Позитивная новость\n2 - Предупреждение\n3 - Плохая новость (закрытие и тп)")
+		await state.set_state(EventDishStates.all()[0])
+	else:
+		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
+
+# add dish cmd
+@dp.message_handler(state = '*', commands = ["add_dish"], commands_prefix = "/")
+async def add_dish(message: types.Message):
+	if(message.from_user.id == config.ADMIN_ID):
+		if(bool(event_data)):
+			await message.answer("Добавление новости отменено⚠")
+			event_data.clear()
+
+		if(bool(cafe_data)):
+			await message.answer("Добавление кафе отменено⚠")
+			cafe_data.clear()
+
+		state = dp.current_state(user = message.from_user.id)
+
+		await message.answer("Добавление блюда начато!✅\nСперва введите название (не более 25 символов):")
+		await state.set_state(EventDishStates.all()[9])
+	else:
+		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
+
+# add cafe cmd
+@dp.message_handler(state = '*', commands = ["add_cafe"], commands_prefix = "/")
+async def add_cafe(message: types.Message):
+	if(message.from_user.id == config.ADMIN_ID):
+		if(bool(dish_data)):
+			await message.answer("Добавление блюда отменено⚠")
+			dish_data.clear()
+
+		if(bool(event_data)):
+			await message.answer("Добавление новости отменено⚠")
+			event_data.clear()
+
+		state = dp.current_state(user = message.from_user.id)
+
+		await message.answer("Добавление кафе начато!✅\nСперва введите адрес:")
+		await state.set_state(EventDishStates.all()[21])
+	else:
+		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
+
+
 # help cmd
 @dp.message_handler(state = '*', commands = ["help"], commands_prefix = "/")
 async def help_cmd(message: types.Message):
-	await message.answer("Доступные команды:" + "\n/add_event - Добавить новость\n/add_dish - Добавить новое блюдо")
+	await message.answer("Доступные команды:" + "\n/add_event - Добавить новость\n/add_dish - Добавить новое блюдо\n/add_cafe - Добавить новое кафе")
+
 
 # delete cmd
 @dp.message_handler(state = '*', commands = ["delete"], commands_prefix = "/")
@@ -182,36 +262,6 @@ async def delete_dish_event(message: types.Message):
 	await message.answer("Успешно удалено✅")
 	await state.set_state(EventDishStates.all()[8])
 
-# add event cmd
-@dp.message_handler(state = '*', commands = ["add_event"], commands_prefix = "/")
-async def add_event(message: types.Message):
-	if(message.from_user.id == config.ADMIN_ID):
-		if(bool(dish_data)):
-			await message.answer("Добавление блюда отменено⚠")
-			dish_data.clear()
-
-		state = dp.current_state(user = message.from_user.id)
-
-		await message.answer("Добавление новости начато!✅\nСперва введите тип новости:\n0 - Открытие в новом месте" +
-			"\n1 - Позитивная новость\n2 - Предупреждение\n3 - Плохая новость (закрытие и тп)")
-		await state.set_state(EventDishStates.all()[0])
-	else:
-		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
-
-# add dish cmd
-@dp.message_handler(state = '*', commands = ["add_dish"], commands_prefix = "/")
-async def add_dish(message: types.Message):
-	if(message.from_user.id == config.ADMIN_ID):
-		if(bool(event_data)):
-			await message.answer("Добавление новости отменено⚠")
-			event_data.clear()
-
-		state = dp.current_state(user = message.from_user.id)
-
-		await message.answer("Добавление блюда начато!✅\nСперва введите название (не более 25 символов):")
-		await state.set_state(EventDishStates.all()[9])
-	else:
-		await message.answer("Вы не являетесь администратором!❌\nВыполнение комманды невозможно!")
 
 # event type request
 @dp.message_handler(state = EventDishStates.S0)
@@ -237,9 +287,7 @@ async def request_name(message: types.Message):
 	if(len(message.text) <= 35):
 		event_data["header"] = message.text
 
-		await message.answer("Отлично!😉\nДалее введите содержимое (не более 500 символов)." +
-			"\nПеред каждым переносом строки, не забывайте вставлять символ '^'.\nПример:\n" +
-			"Не забывайте использовать промокод CUCINA^\nДействитетлен до 17.09.2077😎")
+		await message.answer("Отлично!😉\nДалее введите содержимое (не более 500 символов):")
 		await state.set_state(EventDishStates.all()[2])
 	else:
 		await message.answer("❌Длина заголовка не должна превышать 35 символов!❌")
@@ -416,6 +464,7 @@ async def event_correction(message: types.Message):
 				 "\n\nГорода:\n" + cities + "\nСсылка на изображение: " + event_data["img-url"],
 				 reply_markup = kb.inline_kb_full)
 
+
 # dish name
 @dp.message_handler(state = EventDishStates.SA)
 async def set_dish_name(message: types.Message):
@@ -438,7 +487,19 @@ async def set_dish_category(message: types.Message):
 		if(int(message.text) == 1 or int(message.text) == 2):
 			dish_data["category"] = int(message.text)
 
-			await message.answer("Хорошо!\nДалее введите название группы (сверьте с уже существующими группами в приложении; не более 25 символов⚠️):")
+			reply_text = "Хорошо!\nДалее введите название группы (сверьте с уже существующими группами в приложении; не более 25 символов⚠️)\n\nСуществующие группы:\n"
+
+			select_query = "SELECT DISH_GROUP FROM dishes WHERE CATEGORY = %s;"
+			cursor.execute(select_query, dish_data["category"])
+
+			categories = cursor.fetchall()
+			for category in categories:
+				if(reply_text.find(str(category[0])) == -1):
+					reply_text += str(category[0]) + "\n"
+
+			connection.commit()
+
+			await message.answer(reply_text)
 			await state.set_state(EventDishStates.all()[11])
 		else:
 			await message.answer("Неверный формат!⚠️\nПопробуйте снова!")
@@ -466,11 +527,24 @@ async def set_dish_desc(message: types.Message):
 	if(len(message.text) <= 100):
 		dish_data["desc"] = message.text
 
+		await message.answer("Хорошо!\nДалее вам нужно указать цену блюда:")
+		await state.set_state(EventDishStates.all()[20])
+	else:
+		await message.answer("❌Длина описания не должна превышать 100 символов!❌")
+
+# dish price
+@dp.message_handler(state = EventDishStates.SL)
+async def set_dish_price(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	if(len(message.text) <= 5):
+		dish_data["price"] = int(message.text)
+
 		await message.answer("Хорошо!\nДалее вам нужно отправить ссылку на картинку для блюда.\nДля этого используйте сайт https://postimg.cc"
 		 + "\nОбязательно выберите ссылку с подписью \'Direct link!\'⚠️")
 		await state.set_state(EventDishStates.all()[13])
 	else:
-		await message.answer("❌Длина описания не должна превышать 100 символов!❌")
+		await message.answer("❌Проверьте правильность ввода цены!❌")
 
 # dish img
 @dp.message_handler(state = EventDishStates.SE)
@@ -488,7 +562,7 @@ async def set_dish_img(message: types.Message):
 		category = "Самостоятельное блюдо"
 
 	await message.answer("Готово!🥳\nПроверьте данные и нажиите 'Да✅', чтобы подтвердить отправку или 'Нет❌', чтобы редактировать блюдо.\n\n"
-				+ "Название: " + dish_data["name"] + "\n\nКатегория: " + category + "\n\nГруппа: " + dish_data["group"] +
+				+ "Название: " + dish_data["name"] + "\n\nКатегория: " + category + "\n\nГруппа: " + dish_data["group"] + "\n\nЦена: " + str(dish_data["price"]) +
 				 "\n\nОписание: " + dish_data["desc"] + "\n\nСсылка на изображение: " + dish_data["img-url"],
 				 reply_markup = kb.inline_kb_full)
 
@@ -501,8 +575,8 @@ async def conf_dish(message: types.Message):
 
 	if(message.text == 'Да✅'):
 		# creating insert query
-		insert_query = "INSERT INTO dishes(NAME, CATEGORY, DISH_GROUP, DESCRIPTION, IMG_URL) VALUES(%s, %s, %s, %s, %s);"	
-		cursor.execute(insert_query, (dish_data["name"], dish_data["category"], dish_data["group"], dish_data["desc"], dish_data["img-url"]))
+		insert_query = "INSERT INTO dishes(NAME, CATEGORY, DISH_GROUP, DESCRIPTION, IMG_URL, PRICE) VALUES(%s, %s, %s, %s, %s, %s);"	
+		cursor.execute(insert_query, (dish_data["name"], dish_data["category"], dish_data["group"], dish_data["desc"], dish_data["img-url"], dish_data["price"]))
 
 		connection.commit()
 
@@ -579,6 +653,107 @@ async def corr_dish(message: types.Message):
 					+ "Название: " + dish_data["name"] + "\n\nКатегория: " + category + "\n\nГруппа: " + dish_data["group"] +
 					 "\n\nОписание: " + dish_data["desc"] + "\n\nСсылка на изображение: " + dish_data["img-url"],
 					 reply_markup = kb.inline_kb_full)
+
+
+# address state
+@dp.message_handler(state = EventDishStates.SM)
+async def req_address(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	if(len(message.text) <= 150):
+		cafe_data["address"] = message.text
+
+		await message.answer("Отлично!😉\nДалее введите долготу и широту в формате ДЛГ/ШРТ:")
+		await state.set_state(EventDishStates.all()[22])
+	else:
+		await message.answer("❌Длина адреса не должна превышать 150 символов!❌")
+
+# lat-lng state
+@dp.message_handler(state = EventDishStates.SN)
+async def req_latlng(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	sl_index = message.text.find('/')
+	if(sl_index != -1):
+		cafe_data["longitude"] = float(message.text[:sl_index])
+		cafe_data["latitude"] = float(message.text[(sl_index + 1):])
+
+		await message.answer("Далее введите пароль для вашего нового кафе (допустимы латинские символы, цифры):")
+		await state.set_state(EventDishStates.all()[23])
+	else:
+		await message.answer("❌Неправильный формат! Попробуйте еще раз❌")
+
+# password state
+@dp.message_handler(state = EventDishStates.SO)
+async def req_password(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	ad = AlphabetDetector()
+	if(ad.is_latin(message.text)):
+		cafe_data["password"] = message.text
+		cafe_data["urls_left"] = 5
+		cafe_data["urls"] = []
+
+		await message.answer("Далее укажите ссылки на изображения вашего кафе (осталось - " + str(cafe_data["urls_left"]) + ")."
+		 + "\nДля этого используйте сайт https://postimg.cc"
+			 + "\nОбязательно выберите ссылку с подписью \'Direct link!\'⚠️")
+		await state.set_state(EventDishStates.all()[24])
+	else:
+		await message.answer("❌Неверно введён пароль - присутствуют нелатинские символы❌")
+
+# img-urls state
+@dp.message_handler(state = EventDishStates.SP)
+async def req_urls(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	cafe_data["urls_left"] -= 1
+	cafe_data["urls"].append(message.text)
+
+	if(cafe_data["urls_left"] > 0):
+		await message.answer("Укажите ссылки на изображения вашего кафе (осталось - " + str(cafe_data["urls_left"]) + "):")
+	else:
+		await message.answer("Почти конец!" +
+			"\nДалее укажите город\n\n1 - Киев\n2 - Харьков\n3 - Львов\n4 - Днепр\n5 - Одесса\n6 - Ивано-Франковск\n7 - Херсон")
+		await state.set_state(EventDishStates.all()[25])
+
+# city code state
+@dp.message_handler(state = EventDishStates.SQ)
+async def req_city(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	if(message.text.isdigit() and len(message.text) == 1):
+		cafe_data["city"] = int(message.text)
+		city_list = ["Киев", "Харьков", "Львов", "Днепр", "Одесса", "Ивано-Франковск", "Херсон"]
+
+		urls_str = ""
+		for url in cafe_data["urls"]:
+			urls_str += url + "\n"
+
+		await message.answer("Готово!🥳\nПроверьте данные и нажиите 'Да✅', чтобы подтвердить отправку или 'Нет❌', чтобы редактировать данные.\n\n"
+			+ "Адрес: " + cafe_data["address"] + "\n\nГород:\n" + city_list[cafe_data["city"] - 1] + "\n\nСсылки на изображение:"
+			+ urls_str + "\n" + "Долгота - широта: " + str(cafe_data["longitude"]) + " - " + str(cafe_data["latitude"])  + "\n\n" + "Пароль: " + cafe_data["password"],
+			 reply_markup = kb.inline_kb_full)
+		await state.set_state(EventDishStates.all()[26])
+	else:
+		await message.answer("❌Неверно введён город! Проверьте правильность ввода❌")
+
+# cafe check state
+@dp.message_handler(state = EventDishStates.SR)
+async def req_cafe_conf(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	if(message.text == 'Да✅'):
+		insert_query = "INSERT INTO cafes(LATITUDE, LONGITUDE, ADDRESS, PASSWORD, IMG_URLS, CITY) VALUES(%s, %s, %s, %s, %s, %s);"
+
+		cursor.execute(insert_query, (cafe_data["latitude"], cafe_data["longitude"], cafe_data["address"],
+			hashlib.md5(cafe_data["password"].encode()).hexdigest(), json.dumps(cafe_data["urls"]), cafe_data["city"]))
+
+		connection.commit()
+		cafe_data.clear()
+
+		await message.answer("Новое кафе добавлено в базу данных!😎\nДля продолжения работы введите команду.", reply_markup = None)
+		await state.set_state(EventDishStates.all()[8])
+
 
 # final state (neutral)
 @dp.message_handler(state = EventDishStates.S8)
