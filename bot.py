@@ -159,7 +159,9 @@ async def add_cafe(message: types.Message):
 # help cmd
 @dp.message_handler(state = '*', commands = ["help"], commands_prefix = "/")
 async def help_cmd(message: types.Message):
-	await message.answer("Доступные команды:" + "\n/add_event - Добавить новость\n/add_dish - Добавить новое блюдо\n/add_cafe - Добавить новое кафе")
+	await message.answer("Доступные команды:" + 
+		"\n/add_event - Добавить новость\n/add_dish - Добавить новое блюдо\n/add_cafe - Добавить новое кафе" 
+			+ "\n/delete - Удалить кафе/блюдо/событие")
 
 
 # delete cmd
@@ -172,6 +174,9 @@ async def delete_cmd(message: types.Message):
 		elif(bool(event_data)):
 			await message.answer("Добавление новости отменено⚠")
 			event_data.clear()
+		elif(bool(cafe_data)):
+			await message.answer("Добавление кафе отменено⚠")
+			cafe_data.clear()
 
 		state = dp.current_state(user = message.from_user.id)
 
@@ -195,6 +200,12 @@ async def refine_del(message: types.Message):
 		delete_data["type"] = "dishes"
 
 		await state.set_state(EventDishStates.all()[16])
+	elif(message.text == "Кафе🏠"):
+		await message.answer("Введите адрес кафе, которое желаете удалить:")
+
+		delete_data["type"] = "cafes"
+
+		await state.set_state(EventDishStates.all()[28])
 
 # event search to delete
 @dp.message_handler(state = EventDishStates.S7)
@@ -240,6 +251,28 @@ async def refine_dish_del(message: types.Message):
 	await message.answer(reply_text)
 	await state.set_state(EventDishStates.all()[18])
 
+# cafe search to delete
+@dp.message_handler(state = EventDishStates.ST)
+async def refine_cafe_del(message: types.Message):
+	state = dp.current_state(user = message.from_user.id)
+
+	reply_text = text("Результаты поиска (id - название):\n\n")
+
+	search_key = "%" + message.text + "%"
+	select_query = "SELECT * FROM cafes WHERE ADDRESS LIKE %s;"
+	cursor.execute(select_query, search_key)
+
+	rows = cursor.fetchall()
+	for row in rows:
+		reply_text += str(row[0]) + " - " + row[4] + "\n\n"
+
+	connection.commit()
+
+	reply_text += "Введите id кафе для удаленияℹ️"
+
+	await message.answer(reply_text)
+	await state.set_state(EventDishStates.all()[18])
+
 # dish/event delete
 @dp.message_handler(state = EventDishStates.SJ)
 async def delete_dish_event(message: types.Message):
@@ -250,8 +283,10 @@ async def delete_dish_event(message: types.Message):
 	del_query = ""
 	if(delete_data["type"] == "events"):
 		del_query = "DELETE FROM events WHERE ID = %s;"
-	else:
+	elif(delete_data["type"] == "dishes"):
 		del_query = "DELETE FROM dishes WHERE ID = %s;"
+	else:
+		del_query = "DELETE FROM cafes WHERE ID = %s;"
 
 	cursor.execute(del_query, delete_data["id"])
 
@@ -609,7 +644,7 @@ async def corr_dish(message: types.Message):
 				await message.answer("Длина названия не должна превышать 25 символов⚠️")
 		elif(int(message.text[0]) == 2):
 			if(len(message.text) == 3 and message.text[2].isdigit()):
-				dish_data["name"] = message.text[2]
+				dish_data["category"] = message.text[2]
 
 				corrected = True
 			else:
@@ -753,6 +788,80 @@ async def req_cafe_conf(message: types.Message):
 
 		await message.answer("Новое кафе добавлено в базу данных!😎\nДля продолжения работы введите команду.", reply_markup = None)
 		await state.set_state(EventDishStates.all()[8])
+	elif(message.text == 'Нет❌'):
+		await message.answer("Отправка отменена⚠️\nКафе отправлено на доработку!")
+		await message.answer("Сперва введите параметр (цифрой), который желаете изменить.\nЧерез пробел введите новое значение параметра.\n\n"
+			+ "Параметры:\n" + "1 - Адрес\n" + "2 - Город\n" + "3 - Долгота/Широта\n" + "4 - Пароль\n"
+			 + "5 - Ссылка на изображение|[Номер ссылки для замены (нач. от 0)]\n" + "delete - Удалить кафе\n\n"
+			+ "Пример:\n" + "5 https://postimg.cc/some_image.jpg|2")
+
+		await state.set_state(EventDishStates.all()[27])
+
+# cafe correction state
+@dp.message_handler(state = EventDishStates.SS)
+async def req_cafe_corr(message: types.Message):
+	corrected = False
+
+	state = dp.current_state(user = message.from_user.id)
+
+	if(message.text[0].isdigit() and len(message.text) >= 3):
+		if(int(message.text[0]) == 1):
+			if(len(message.text[2:]) <= 150):
+				cafe_data["address"] = message.text[2:]
+
+				corrected = True
+			else:
+				await message.answer("Длина адреса не должна превышать 150 символов⚠️")
+		elif(int(message.text[0]) == 2):
+			if(len(message.text) == 3 and message.text[2].isdigit()):
+				cafe["city"] = int(message.text[2])
+
+				corrected = True
+			else:
+				await message.answer("Неверный формат! Введите данный параметр в виде \"НОМЕР_ПАРАМЕТРА НОМЕР_КАТЕГОРИИ\"⚠️")
+		elif(int(message.text[0]) == 3):
+			sl_pos = message.text.find("/")
+			if(sl_pos != -1):
+				cafe_data["longitude"] = float(message.text[2:sl_pos])
+				cafe_data["latitude"] = float(message.text[(sl_pos + 1):])
+
+				corrected = True
+			else:
+				await message.answer("Неверный формат! Введите данный параметр в виде \"НОМЕР_ПАРАМЕТРА ДЛГ/ШРТ\"⚠️")
+		elif(int(message.text[0]) == 4):
+			сafe_data["password"] = message.text[2:]
+
+			corrected = True
+		elif(int(message.text[0]) == 5):
+			divider_pos = message.text.find("|")
+
+			if(divider_pos != -1):
+				cafe_data["urls"][divider_pos + 1] = message.text[2:divider_pos]
+			else:
+				await message.answer("Неверный формат! Введите данный параметр в виде \"НОМЕР_ПАРАМЕТРА URL|[НОМЕР ССЫЛКИ ДЛЯ ЗАМЕНЫ]\"⚠️")
+
+			corrected = True
+	elif(message.text == "delete"):
+		cafe_data.clear()
+		await message.answer("Кафе удалено!⚠️")
+		await state.set_state(EventDishStates.all()[8])
+	else:
+		await message.answer("Неверный формат! Попробуйте снова!")
+
+	if(corrected):
+		await message.answer("Правки внесены!")
+		await state.set_state(EventDishStates.all()[26])
+
+		city_list = ["Киев", "Харьков", "Львов", "Днепр", "Одесса", "Ивано-Франковск", "Херсон"]
+
+		urls_str = ""
+		for url in cafe_data["urls"]:
+			urls_str += url + "\n"
+
+		await message.answer("Готово!🥳\nПроверьте данные и нажиите 'Да✅', чтобы подтвердить отправку или 'Нет❌', чтобы редактировать данные.\n\n"
+			+ "Адрес: " + cafe_data["address"] + "\n\nГород:\n" + city_list[cafe_data["city"] - 1] + "\n\nСсылки на изображение:"
+			+ urls_str + "\n" + "Долгота - широта: " + str(cafe_data["longitude"]) + " - " + str(cafe_data["latitude"])  + "\n\n" + "Пароль: " + cafe_data["password"],
+			 reply_markup = kb.inline_kb_full)
 
 
 # final state (neutral)
