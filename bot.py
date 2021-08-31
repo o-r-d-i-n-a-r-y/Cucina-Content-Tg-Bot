@@ -31,6 +31,8 @@ cafe_data = dict()
 # delete data (for all)
 delete_data = dict()
 
+#
+
 class EventDishStates(Helper):
 	mode = HelperMode.snake_case
 
