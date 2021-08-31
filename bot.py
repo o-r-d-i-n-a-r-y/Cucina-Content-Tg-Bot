@@ -79,9 +79,6 @@ class EventDishStates(Helper):
 # logging setup
 logging.basicConfig(level = logging.INFO)
 
-connection = pymysql.connect(host = "localhost", user = "root", passwd = "", database = "cucina_db")
-cursor = connection.cursor()
-
 bot = Bot(token = config.TOKEN)
 dp = Dispatcher(bot, storage = MemoryStorage())
 
@@ -214,6 +211,9 @@ async def refine_event_del(message: types.Message):
 
 	reply_text = text("Результаты поиска (id - событие):\n\n")
 
+	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	cursor = connection.cursor()
+
 	search_key = "%" + message.text + "%"
 	select_query = "SELECT * FROM events WHERE HEADER LIKE %s;"
 	cursor.execute(select_query, search_key)
@@ -235,6 +235,9 @@ async def refine_dish_del(message: types.Message):
 	state = dp.current_state(user = message.from_user.id)
 
 	reply_text = text("Результаты поиска (id - название):\n\n")
+
+	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	cursor = connection.cursor()
 
 	search_key = "%" + message.text + "%"
 	select_query = "SELECT * FROM dishes WHERE NAME LIKE %s;"
@@ -258,6 +261,9 @@ async def refine_cafe_del(message: types.Message):
 
 	reply_text = text("Результаты поиска (id - название):\n\n")
 
+	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	cursor = connection.cursor()
+
 	search_key = "%" + message.text + "%"
 	select_query = "SELECT * FROM cafes WHERE ADDRESS LIKE %s;"
 	cursor.execute(select_query, search_key)
@@ -279,6 +285,9 @@ async def delete_dish_event(message: types.Message):
 	state = dp.current_state(user = message.from_user.id)
 
 	delete_data["id"] = int(message.text)
+
+	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	cursor = connection.cursor()
 
 	del_query = ""
 	if(delete_data["type"] == "events"):
@@ -408,6 +417,9 @@ async def event_confirmation_request(message: types.Message):
 
 	if(message.text == 'Да✅'):
 		# creating insert query
+		connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+		cursor = connection.cursor()
+
 		insert_query = "INSERT INTO events(TYPE, HEADER, CONTENT, IMG_URL, CITY, END_DATE) VALUES(%s, %s, %s, %s, %s, %s);"	
 		cursor.execute(insert_query, (event_data["type"], event_data["header"], event_data["content"], event_data["img-url"], event_data["city"], event_data["end-date"]))
 
@@ -524,6 +536,9 @@ async def set_dish_category(message: types.Message):
 
 			reply_text = "Хорошо!\nДалее введите название группы (сверьте с уже существующими группами в приложении; не более 25 символов⚠️)\n\nСуществующие группы:\n"
 
+			connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+			cursor = connection.cursor()
+
 			select_query = "SELECT DISH_GROUP FROM dishes WHERE CATEGORY = %s;"
 			cursor.execute(select_query, dish_data["category"])
 
@@ -610,6 +625,9 @@ async def conf_dish(message: types.Message):
 
 	if(message.text == 'Да✅'):
 		# creating insert query
+		connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+		cursor = connection.cursor()
+
 		insert_query = "INSERT INTO dishes(NAME, CATEGORY, DISH_GROUP, DESCRIPTION, IMG_URL, PRICE) VALUES(%s, %s, %s, %s, %s, %s);"	
 		cursor.execute(insert_query, (dish_data["name"], dish_data["category"], dish_data["group"], dish_data["desc"], dish_data["img-url"], dish_data["price"]))
 
@@ -778,6 +796,9 @@ async def req_cafe_conf(message: types.Message):
 	state = dp.current_state(user = message.from_user.id)
 
 	if(message.text == 'Да✅'):
+		connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+		cursor = connection.cursor()
+
 		insert_query = "INSERT INTO cafes(LATITUDE, LONGITUDE, ADDRESS, PASSWORD, IMG_URLS, CITY) VALUES(%s, %s, %s, %s, %s, %s);"
 
 		cursor.execute(insert_query, (cafe_data["latitude"], cafe_data["longitude"], cafe_data["address"],
