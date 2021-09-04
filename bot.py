@@ -5,6 +5,7 @@ import keyboard as kb
 import pymysql
 import hashlib
 import json
+import requests
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils.helper import Helper, HelperMode, ListItem
@@ -426,6 +427,25 @@ async def event_confirmation_request(message: types.Message):
 		cursor.execute(insert_query, (event_data["type"], event_data["header"], event_data["content"], event_data["img-url"], event_data["city"], event_data["end-date"]))
 
 		connection.commit()
+
+		receiver = "/topics/" + str(event_data["city"])
+
+		headers = {
+		        'Content-Type': 'application/json',
+		        'Authorization': 'key=' + config.FCM_SERVER_TOKEN,
+		      }
+
+		body = {
+		          'notification': {'title': event_data["header"],
+		                            'body': event_data["content"],
+		                            'image': event_data["img-url"]
+		                            },
+		          'to':
+		              receiver,
+		          'priority': 'high',
+		        }
+
+		requests.post("https://fcm.googleapis.com/fcm/send", headers = headers, data=json.dumps(body))
 
 		event_data.clear()
 
