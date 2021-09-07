@@ -433,12 +433,12 @@ async def event_confirmation_request(message: types.Message):
 		condition = ""
 		
 		if(event_data["city"] != "all" and len(event_data["city"]) < 5):
-		    for(i in range len(event_data["city"])):
+		    for i in range(len(event_data["city"])):
 		        char = event_data["city"][i]
 		        
 		        condition += "'" + char + "'" + " in topics"
 		        
-		        if(i != len(event_data["city"] - 1):
+		        if(i != len(event_data["city"]) - 1):
 		            condition += " || "
         else:
             condition = "'all' in topics"
@@ -453,11 +453,9 @@ async def event_confirmation_request(message: types.Message):
 		                            'body': event_data["content"],
 		                            'image': event_data["img-url"]
 		                            },
-		          #'to':
-                      #receiver,
                   'condition': condition,  
 		          'priority': 'high',
-		        }
+		        } 
 
 		requests.post("https://fcm.googleapis.com/fcm/send", headers = headers, data=json.dumps(body))
 
