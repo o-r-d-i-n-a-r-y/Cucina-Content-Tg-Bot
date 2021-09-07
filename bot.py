@@ -32,8 +32,6 @@ cafe_data = dict()
 # delete data (for all)
 delete_data = dict()
 
-#
-
 class EventDishStates(Helper):
 	mode = HelperMode.snake_case
 
@@ -214,7 +212,8 @@ async def refine_event_del(message: types.Message):
 
 	reply_text = text("Результаты поиска (id - событие):\n\n")
 
-	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+			user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 	cursor = connection.cursor()
 
 	search_key = "%" + message.text + "%"
@@ -239,7 +238,8 @@ async def refine_dish_del(message: types.Message):
 
 	reply_text = text("Результаты поиска (id - название):\n\n")
 
-	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+			user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 	cursor = connection.cursor()
 
 	search_key = "%" + message.text + "%"
@@ -264,7 +264,8 @@ async def refine_cafe_del(message: types.Message):
 
 	reply_text = text("Результаты поиска (id - название):\n\n")
 
-	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+			user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 	cursor = connection.cursor()
 
 	search_key = "%" + message.text + "%"
@@ -289,7 +290,8 @@ async def delete_dish_event(message: types.Message):
 
 	delete_data["id"] = int(message.text)
 
-	connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+	connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+			user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 	cursor = connection.cursor()
 
 	del_query = ""
@@ -420,7 +422,8 @@ async def event_confirmation_request(message: types.Message):
 
 	if(message.text == 'Да✅'):
 		# creating insert query
-		connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+		connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+			user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 		cursor = connection.cursor()
 
 		insert_query = "INSERT INTO events(TYPE, HEADER, CONTENT, IMG_URL, CITY, END_DATE) VALUES(%s, %s, %s, %s, %s, %s);"	
@@ -659,7 +662,8 @@ async def conf_dish(message: types.Message):
 
 	if(message.text == 'Да✅'):
 		# creating insert query
-		connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+		connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+			user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 		cursor = connection.cursor()
 
 		insert_query = "INSERT INTO dishes(NAME, CATEGORY, DISH_GROUP, DESCRIPTION, IMG_URL, PRICE) VALUES(%s, %s, %s, %s, %s, %s);"	
@@ -830,7 +834,8 @@ async def req_cafe_conf(message: types.Message):
 	state = dp.current_state(user = message.from_user.id)
 
 	if(message.text == 'Да✅'):
-		connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+		connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+			user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 		cursor = connection.cursor()
 
 		insert_query = "INSERT INTO cafes(LATITUDE, LONGITUDE, ADDRESS, PASSWORD, IMG_URLS, CITY) VALUES(%s, %s, %s, %s, %s, %s);"
