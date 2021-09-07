@@ -428,7 +428,20 @@ async def event_confirmation_request(message: types.Message):
 
 		connection.commit()
 
-		receiver = "/topics/" + str(event_data["city"])
+		#receiver = "/topics/" + str(event_data["city"])
+		
+		condition = ""
+		
+		if(event_data["city"] != "all" and len(event_data["city"]) < 5):
+		    for(i in range len(event_data["city"])):
+		        char = event_data["city"][i]
+		        
+		        condition += "'" + char + "'" + " in topics"
+		        
+		        if(i != len(event_data["city"] - 1):
+		            condition += " || "
+        else:
+            condition = "'all' in topics"
 
 		headers = {
 		        'Content-Type': 'application/json',
@@ -440,8 +453,9 @@ async def event_confirmation_request(message: types.Message):
 		                            'body': event_data["content"],
 		                            'image': event_data["img-url"]
 		                            },
-		          'to':
-		              receiver,
+		          #'to':
+                      #receiver,
+                  'condition': condition,  
 		          'priority': 'high',
 		        }
 
