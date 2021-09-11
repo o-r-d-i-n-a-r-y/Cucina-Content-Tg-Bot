@@ -573,7 +573,8 @@ async def set_dish_category(message: types.Message):
 
 			reply_text = "Хорошо!\nДалее введите название группы (сверьте с уже существующими группами в приложении; не более 25 символов⚠️)\n\nСуществующие группы:\n"
 
-			connection = pymysql.connect(host = "remotemysql.com", user = "Z95oaSNemg", passwd = "LcLasxSSeZ", database = "Z95oaSNemg")
+			connection = pymysql.connect(host = "bexxdjtelosalzwweg75-mysql.services.clever-cloud.com",
+				user = "udqtslydcrruosau", passwd = "Soj2rysiKT81QgQMbc8V", database = "bexxdjtelosalzwweg75")
 			cursor = connection.cursor()
 
 			select_query = "SELECT DISH_GROUP FROM dishes WHERE CATEGORY = %s;"
